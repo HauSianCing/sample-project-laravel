@@ -39,7 +39,7 @@
     <h1>{{ trans('messages.employee_registration_system') }}</h1>
     <div class="iDClass">
         <button type="button" class="btn btn-light" disabled>
-        {{ trans('messages.employee_id') }} : {{session('employee')->employee_id}}
+        {{ trans('messages.employee_id') }} : {{ session('employee.employee_id') }}
         </button>
     </div>
 </div>

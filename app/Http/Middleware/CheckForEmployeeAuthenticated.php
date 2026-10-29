@@ -23,10 +23,10 @@ class CheckForEmployeeAuthenticated
      */
     public function handle($request, Closure $next)
     {
-        $sessionEmployee = session('employee');
+        $employeeKey = session('employee.id');
 
         // Make sure the logged-in employee still exists and has not been inactivated.
-        if ($sessionEmployee && isset($sessionEmployee->id) && Employee::whereKey($sessionEmployee->id)->exists()) {
+        if ($employeeKey && Employee::whereKey($employeeKey)->exists()) {
             return $next($request);
         }
 

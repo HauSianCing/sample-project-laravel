@@ -163,10 +163,10 @@
         {{ session()->get('status') }}
     </div>
     @endif
-    @if(session()->has('errors'))
+    @if(session()->has('error_message'))
     <div class="alert alert-danger" style="margin-left: 10%; margin-right:10%; text-align:center">
         <span class="close-button">&times;</span>
-        {{ session()->get('errors') }}
+        {{ session()->get('error_message') }}
     </div>
     @endif
 </head>

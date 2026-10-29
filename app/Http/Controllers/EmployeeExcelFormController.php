@@ -113,6 +113,6 @@ class EmployeeExcelFormController extends Controller
             return Excel::download($data, 'search_employees_results.xlsx');
         }
 
-        return redirect()->back()->with('errors', 'No Employee Found');
+        return redirect()->back()->with('error_message', 'No Employee Found');
     }
 }

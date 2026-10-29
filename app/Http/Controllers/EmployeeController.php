@@ -75,7 +75,7 @@ class EmployeeController extends Controller
             if (!empty(Session::get('error'))) {
                 $error = Session::get('error');
                 Session::forget('success');
-                return $redirect->with('errors', $error);
+                return $redirect->with('error_message', $error);
             }
             return $redirect;
         }
@@ -99,7 +99,7 @@ class EmployeeController extends Controller
         }
         // Prevent session fixation and keep only the fields we need (never the password hash).
         $request->session()->regenerate();
-        session()->put('employee', (object) [
+        session()->put('employee', [
             'id' => $employee->id,
             'employee_id' => $employee->employee_id,
             'employee_name' => $employee->employee_name,
@@ -136,7 +136,7 @@ class EmployeeController extends Controller
             $saveEmployee = $saveEmployee->executeProcess();
 
             if (!$saveEmployee) {
-                return redirect()->back()->withInput()->with('errors', 'Unable to save Employee Information');
+                return redirect()->back()->withInput()->with('error_message', 'Unable to save Employee Information');
             }
             if ($file) {
                 $saveUpload = new SaveEmployeeUpload($file, $newId);
@@ -145,10 +145,10 @@ class EmployeeController extends Controller
             if ($saveEmployee) {
                 return redirect()->route('employees.lists')->with('status', ' Employee ID ' . $newId . ' is created');
             } else {
-                return  redirect()->back()->with('errors', 'Unable to save Employee Information');
+                return  redirect()->back()->with('error_message', 'Unable to save Employee Information');
             }
         } catch (\Exception $e) {
-            return redirect()->route('employees.register')->with('errors', 'Something went Wrong. Please Try again');
+            return redirect()->route('employees.register')->with('error_message', 'Something went Wrong. Please Try again');
         }
     }
 
@@ -165,7 +165,7 @@ class EmployeeController extends Controller
         if (!$employee) {
             Session::put('error', 'No Employee Found to show');
             Session::forget('success');
-            return redirect()->back()->with('errors', 'No Employee Found to show');
+            return redirect()->back()->with('error_message', 'No Employee Found to show');
         }
         $employee_id = $employee->employee_id;
         $employeeUploads = $this->employeeUploadInterface->getEmployeeUploadByID($employee_id);
@@ -199,12 +199,12 @@ class EmployeeController extends Controller
         if (!$employee) {
             Session::put('error', 'No employee found to edit');
             Session::forget('success');
-            return redirect()->to($previous)->with('errors', 'No employee found to edit');
+            return redirect()->to($previous)->with('error_message', 'No employee found to edit');
         }
         if (!$employee->deleted_at == null) {
             Session::put('error', 'Unable to edit this employee');
             Session::forget('success');
-            return redirect()->to($previous)->with('errors', 'Unable to edit this employee');
+            return redirect()->to($previous)->with('error_message', 'Unable to edit this employee');
         }
         $employee_id = $employee->employee_id;
         $employeeUploads = $this->employeeUploadInterface->getEmployeeUploadByID($employee_id);
@@ -232,7 +232,7 @@ class EmployeeController extends Controller
         if (!$employee || $employee->deleted_at !== null) {
             Session::put('error', 'Unable to update this employee');
             Session::forget('success');
-            return redirect()->to($previousUrl)->with('errors', 'Unable to update this employee');
+            return redirect()->to($previousUrl)->with('error_message', 'Unable to update this employee');
         }
         try {
             // Always update the employee from the URL, not from a hidden form field.
@@ -256,11 +256,11 @@ class EmployeeController extends Controller
             }
             Session::put('error', 'Unable to update this employee');
             Session::forget('success');
-            return redirect()->to($previousUrl)->with('errors', 'Unable to update Employee Information');
+            return redirect()->to($previousUrl)->with('error_message', 'Unable to update Employee Information');
         } catch (\Exception $e) {
             Session::put('error', 'Unable to update this employee');
             Session::forget('success');
-            return redirect()->to($previousUrl)->with('errors', 'Something went Wrong while updating. Please try again');
+            return redirect()->to($previousUrl)->with('error_message', 'Something went Wrong while updating. Please try again');
         }
     }
 
@@ -277,13 +277,12 @@ class EmployeeController extends Controller
         if (!$employee) {
             Session::put('error', 'No employee Found to delete');
             Session::forget('success');
-            return redirect()->back()->with('errors', 'No employee Found to delete');
+            return redirect()->back()->with('error_message', 'No employee Found to delete');
         }
 
-        $employeeEnter = session('employee');
-        if ($employee->employee_id == $employeeEnter->employee_id) {
+        if ($employee->employee_id == session('employee.employee_id')) {
 
-            return redirect()->back()->with('errors', 'You cannot delete your account while logging in');
+            return redirect()->back()->with('error_message', 'You cannot delete your account while logging in');
         }
 
         $employeeDelete = new DeleteEmployee($employee->id);
@@ -291,7 +290,7 @@ class EmployeeController extends Controller
         if ($employeeDelete == false) {
             Session::put('error', 'Unable to delete this employee.');
             Session::forget('success');
-            return redirect()->back()->with('errors', 'Unable to delete this employee.');
+            return redirect()->back()->with('error_message', 'Unable to delete this employee.');
         }
         Session::put('success', 'Employee ID: ' . $employee->employee_id . ' is deleted successfully.');
         Session::forget('error');
@@ -310,11 +309,10 @@ class EmployeeController extends Controller
         if (!$inActiveEmp) {
             Session::put('error', 'Unable to Inactivate this employee');
             Session::forget('success');
-            return redirect()->back()->with('errors', 'Unable to Inactivate this employee');
+            return redirect()->back()->with('error_message', 'Unable to Inactivate this employee');
         }
-        $employeeEnter = session('employee');
-        if ($inActiveEmp->employee_id == $employeeEnter->employee_id) {
-            return redirect()->back()->with('errors', 'You cannot inactivate your account while logging in');
+        if ($inActiveEmp->employee_id == session('employee.employee_id')) {
+            return redirect()->back()->with('error_message', 'You cannot inactivate your account while logging in');
         }
 
         if ($inActiveEmp->deleted_at == null) {
@@ -325,7 +323,7 @@ class EmployeeController extends Controller
         }
         Session::put('error', 'Employee already Inactivated.');
         Session::forget('success');
-        return redirect()->back()->with('errors', 'Employee already Inactivated.');
+        return redirect()->back()->with('error_message', 'Employee already Inactivated.');
     }
     /**
      * inactive to active the employee 
@@ -340,12 +338,12 @@ class EmployeeController extends Controller
         if (!$activeEmp) {
             Session::put('error', 'Unable to Activate this employee');
             Session::forget('success');
-            return redirect()->back()->with('errors', 'Unable to Activate this employee');
+            return redirect()->back()->with('error_message', 'Unable to Activate this employee');
         }
         if ($activeEmp->deleted_at == null) {
             Session::put('error', 'Employee already Activated.');
             Session::forget('success');
-            return redirect()->back()->with('errors', 'Employee already Activated.');
+            return redirect()->back()->with('error_message', 'Employee already Activated.');
         }
         $activeEmp->restore(); //restore the soft deleted employee
         Session::put('success', 'Employee Activated successfully.');

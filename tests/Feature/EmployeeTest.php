@@ -40,7 +40,7 @@ class EmployeeTest extends TestCase
 
     private function loggedIn(): static
     {
-        return $this->withSession(['employee' => (object) [
+        return $this->withSession(['employee' => [
             'id' => $this->me->id,
             'employee_id' => $this->me->employee_id,
             'employee_name' => $this->me->employee_name,
@@ -85,9 +85,8 @@ class EmployeeTest extends TestCase
         $this->post('/employees/check', ['employee_id' => 10001, 'emp_password' => 'secret1'])
             ->assertRedirect(route('employees.lists'));
 
-        $sessionEmployee = session('employee');
-        $this->assertSame($this->me->id, $sessionEmployee->id);
-        $this->assertFalse(isset($sessionEmployee->password));
+        $this->assertSame($this->me->id, session('employee.id'));
+        $this->assertArrayNotHasKey('password', session('employee'));
     }
 
     public function test_inactivated_employee_is_logged_out(): void
@@ -189,7 +188,7 @@ class EmployeeTest extends TestCase
     {
         $other = Employee::factory()->create();
 
-        $this->loggedIn()->delete("/employees/delete/{$this->me->id}")->assertSessionHas('errors');
+        $this->loggedIn()->delete("/employees/delete/{$this->me->id}")->assertSessionHas('error_message');
         $this->assertModelExists($this->me);
 
         $this->loggedIn()->delete("/employees/delete/{$other->id}")->assertSessionHas('status');
@@ -211,7 +210,7 @@ class EmployeeTest extends TestCase
     public function test_excel_download_with_no_results_shows_error(): void
     {
         $this->loggedIn()->from('/employees/lists')->get('/employees/excel-downloads?employeeName=nobody-has-this-name')
-            ->assertRedirect('/employees/lists')->assertSessionHas('errors');
+            ->assertRedirect('/employees/lists')->assertSessionHas('error_message');
     }
 
     private function makeImportFile(array $rows): UploadedFile
