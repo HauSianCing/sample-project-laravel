@@ -13,7 +13,7 @@ interface EmployeeUploadInterface
      * @return object
      *
      */
-    public function getEmployeeUploadByID($empoyee_id);
+    public function getEmployeeUploadByID($employee_id);
 
    
 }

@@ -59,7 +59,7 @@ class EmployeeStoreRequest extends FormRequest
             'password.required' => 'Please enter Password.',
             'email_address.required' => 'Please enter Email Address.',
             'date_of_birth.required' => 'Please select your Birth Date.',
-            'photo.image' => 'Your file must be Image'
+            'photo.mimes' => 'Your photo must be a JPG or PNG image.'
         ];
     }
 }

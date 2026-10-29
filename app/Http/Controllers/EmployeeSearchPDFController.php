@@ -6,7 +6,6 @@ use \Mpdf\Mpdf as PDF;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\View;
 use App\Interfaces\EmployeeInterface;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * Class EmployeeSearchPDFController
@@ -40,27 +39,24 @@ class EmployeeSearchPDFController extends Controller
     public function downloadPDFSearch(Request $request)
     {
         $employees = $this->employeeInterface->getSearchResultForDownload($request);
-        $documentFileName = "search_results_emplpyees.pdf";
+        $documentFileName = "search_results_employees.pdf";
 
         $document = new PDF([
             'mode' => 'utf-8',
-            'format' => 'A4'
+            'format' => 'A4',
+            'tempDir' => storage_path('app/mpdf'),
         ]);
 
-        // Set some header informations for output
-        $header = [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="' . $documentFileName . '"'
-        ];
-
         $html = View::make('employees.searchPDF')
-            ->with('employees', $employees);
+            ->with('employees', $employees)
+            ->render();
         $document->WriteHTML($html);
 
-        // Save PDF on your public storage 
-        Storage::disk('public')->put($documentFileName, $document->Output($documentFileName, "D"));
-
-        // Get file back from storage with the give header informations
-        return Storage::disk('public')->download($documentFileName, 'Request', $header); //
+        // Build the PDF in memory and send it as a download
+        // (no temporary file left behind in storage).
+        return response($document->Output($documentFileName, 'S'), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="' . $documentFileName . '"',
+        ]);
     }
 }

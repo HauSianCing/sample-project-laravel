@@ -12,7 +12,6 @@ use App\Interfaces\EmployeeInterface;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
-use App\Http\Requests\EmployeeExcelStoreRequest;
 
 /**
  * Class EmployeeExcelFormController
@@ -59,11 +58,21 @@ class EmployeeExcelFormController extends Controller
         } else {
             $fileName = $file->getClientOriginalName();
             if (Str::contains($fileName, 'employee_registration_form') == false) {
-                return redirect()->back()->with(['validation_import_error' => 'Your imported file is Wrong. Please check your file again!']);
+                return redirect()->back()->with(['validation_import_error' => ['Your imported file is Wrong. Please check your file again!']]);
             }
         }
-        $data = Excel::import(new EmployeeExcelImport, $file); 
-        return redirect()->back()->with('status', "The File is imported successfully");
+        $import = new EmployeeExcelImport();
+        try {
+            Excel::import($import, $file);
+        } catch (\Exception $e) {
+            report($e);
+            return redirect()->back()->with(['validation_import_error' => ['The file could not be imported. Please check your file again!']]);
+        }
+
+        if (!empty($import->errors())) {
+            return redirect()->back()->with(['validation_import_error' => $import->errors()]);
+        }
+        return redirect()->back()->with('status', $import->importedCount() . ' employee(s) imported successfully');
     }
 
     /**
@@ -98,7 +107,7 @@ class EmployeeExcelFormController extends Controller
     {
         
         $employees = $this->employeeInterface->getSearchResultForDownload($request);
-        if ($employees) {
+        if ($employees->isNotEmpty()) {
 
             $data = new ExcelSearchResults($employees);
             return Excel::download($data, 'search_employees_results.xlsx');

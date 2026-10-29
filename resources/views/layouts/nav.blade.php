@@ -60,7 +60,8 @@
             <!-- Modal Footer -->
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ trans('messages.cancel') }}</button>
-                <form method="get" action="{{ route('logout') }}">
+                <form method="post" action="{{ route('logout') }}">
+                    @csrf
                     <button type="submit" class="btn btn-primary">{{ trans('messages.logout_btn') }}</button>
                 </form>
             </div>

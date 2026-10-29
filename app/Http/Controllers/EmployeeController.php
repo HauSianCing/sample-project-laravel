@@ -59,28 +59,25 @@ class EmployeeController extends Controller
      */
     public function index(Request $request)
     {
-        $employees = $this->employeeInterface->getAllEmployees();
+        $employees = $this->employeeInterface->getSearchResult($request);
 
-        if ($request) {
-            $employees = $this->employeeInterface->getSearchResult($request);
-            if ($employees->currentPage() > $employees->lastPage()) {
-                $page = $employees->lastPage();
-                $employees = $this->employeeInterface->getSearchPage($request, $page);
+        // If the requested page is past the end (e.g. after deleting the last row on a page),
+        // redirect to the last page and keep any flash message.
+        if ($employees->lastPage() > 0 && $employees->currentPage() > $employees->lastPage()) {
+            $page = $employees->lastPage();
+            $redirect = redirect()->to($request->fullUrlWithQuery(compact('page')));
 
-                if (!empty(Session::get('success'))) {
-                    $success = Session::get('success');
-                    Session::forget('error');
-                    return redirect()->to($request->fullUrlWithQuery(compact('page')))->with('status', $success);
-                }
-                if (!empty(Session::get('error'))) {
-                    $error = Session::get('error');
-                    Session::forget('success');
-                    return redirect()->to($request->fullUrlWithQuery(compact('page')))->with('errors', $error);
-                }
-
-                return redirect()->to($request->fullUrlWithQuery(compact('page')));
+            if (!empty(Session::get('success'))) {
+                $success = Session::get('success');
+                Session::forget('error');
+                return $redirect->with('status', $success);
             }
-            return view('employees.lists', compact('employees'));
+            if (!empty(Session::get('error'))) {
+                $error = Session::get('error');
+                Session::forget('success');
+                return $redirect->with('errors', $error);
+            }
+            return $redirect;
         }
 
         return view('employees.lists', compact('employees'));
@@ -100,7 +97,13 @@ class EmployeeController extends Controller
         if (!($employee && Hash::check($request->emp_password, $employee->password))) {
             return redirect()->route('login')->withErrors('Employee ID or Password is wrong');
         }
-        session()->put('employee', $employee);
+        // Prevent session fixation and keep only the fields we need (never the password hash).
+        $request->session()->regenerate();
+        session()->put('employee', (object) [
+            'id' => $employee->id,
+            'employee_id' => $employee->employee_id,
+            'employee_name' => $employee->employee_name,
+        ]);
         return redirect()->route('employees.lists');
     }
 
@@ -129,14 +132,17 @@ class EmployeeController extends Controller
             $file = $request->file('photo');
             # get generated new employee id 
             $newId = $this->employeeInterface->getNewEmployeeID();
-            $saveEmployee = new SaveEmployee($request);
+            $saveEmployee = new SaveEmployee($request, $newId);
             $saveEmployee = $saveEmployee->executeProcess();
 
+            if (!$saveEmployee) {
+                return redirect()->back()->withInput()->with('errors', 'Unable to save Employee Information');
+            }
             if ($file) {
                 $saveUpload = new SaveEmployeeUpload($file, $newId);
-                $saveUpload = $saveUpload->executeProcess();
+                $saveUpload->executeProcess();
             }
-            if ($saveEmployee || $saveUpload) {
+            if ($saveEmployee) {
                 return redirect()->route('employees.lists')->with('status', ' Employee ID ' . $newId . ' is created');
             } else {
                 return  redirect()->back()->with('errors', 'Unable to save Employee Information');
@@ -189,7 +195,7 @@ class EmployeeController extends Controller
         }
 
         $employee = $this->employeeInterface->getEmployeeByID($id);
-        $previous = session("previous_url_$id");
+        $previous = session("previous_url_$id", route('employees.lists'));
         if (!$employee) {
             Session::put('error', 'No employee found to edit');
             Session::forget('success');
@@ -221,46 +227,36 @@ class EmployeeController extends Controller
      */
     public function update(EmployeeUpdateRequest $request, $id)
     {
-        $previousUrl = session("previous_url_$id");
+        $previousUrl = session("previous_url_$id", route('employees.lists'));
         $employee = $this->employeeInterface->getEmployeeByID($id);
-        if (!$employee) {
-            Session::put('error', 'Unable to upadate this employee');
-            Session::forget('success');
-            return redirect()->to($previousUrl)->with('errors', 'Unable to upadate this employee');
-        }
-        if (!$employee->deleted_at == null) {
+        if (!$employee || $employee->deleted_at !== null) {
             Session::put('error', 'Unable to update this employee');
             Session::forget('success');
-            return redirect()->to($previousUrl)->with('errors', 'Unable to upadate this employee');
+            return redirect()->to($previousUrl)->with('errors', 'Unable to update this employee');
         }
         try {
-            $updateEmployee = new UpdateEmployee($request);
+            // Always update the employee from the URL, not from a hidden form field.
+            $updateEmployee = new UpdateEmployee($request, $employee->id);
             $updateEmployee = $updateEmployee->executeProcess();
-            $employeeUploads = $this->employeeUploadInterface->getEmployeeUploadByID($request->employee_id);
-            if (!$employeeUploads) {
-                if ($request->file('photo')) {
-                    $file = $request->file('photo');
-                    $updateUpload = new UpdateEmployeeUpload($file, $request->employee_id);
-                    $updateUpload = $updateUpload->executeProcess();
+
+            if ($updateEmployee && $request->file('photo')) {
+                $employeeUploads = $this->employeeUploadInterface->getEmployeeUploadByID($employee->employee_id);
+                if ($employeeUploads->isNotEmpty()) {
+                    $deletePhoto = new DeleteEmployeeUpload($employeeUploads);
+                    $deletePhoto->executeProcess();
                 }
-            } else {
-                if ($request->file('photo')) {
-                    $file = $request->file('photo');
-                    $deletephoto = new DeleteEmployeeUpload($employeeUploads);
-                    $deletephoto = $deletephoto->executeProcess();
-                    $updateUpload = new UpdateEmployeeUpload($file, $request->employee_id);
-                    $updateUpload = $updateUpload->executeProcess();
-                }
+                $updateUpload = new UpdateEmployeeUpload($request->file('photo'), $employee->employee_id);
+                $updateUpload->executeProcess();
             }
-            if ($updateEmployee || $updateUpload) {
-                Session::put('success', 'Employee ID: ' . $request->employee_id . ' is updated successfully');
+
+            if ($updateEmployee) {
+                Session::put('success', 'Employee ID: ' . $employee->employee_id . ' is updated successfully');
                 Session::forget('error');
-                return redirect()->to($previousUrl)->with('status', 'Employee ID: ' . $request->employee_id . ' is updated successfully');
-            } else {
-                Session::put('error', 'Unable to update this employee');
-                Session::forget('success');
-                return redirect()->to($previousUrl)->with('errors', 'Unable to update Employee Information');
+                return redirect()->to($previousUrl)->with('status', 'Employee ID: ' . $employee->employee_id . ' is updated successfully');
             }
+            Session::put('error', 'Unable to update this employee');
+            Session::forget('success');
+            return redirect()->to($previousUrl)->with('errors', 'Unable to update Employee Information');
         } catch (\Exception $e) {
             Session::put('error', 'Unable to update this employee');
             Session::forget('success');
@@ -323,11 +319,11 @@ class EmployeeController extends Controller
 
         if ($inActiveEmp->deleted_at == null) {
             $inActiveEmp->delete(); // Soft delete the employee
-            Session::put('success', 'Unable to Inactivate this employee');
+            Session::put('success', 'Employee Inactivated successfully.');
             Session::forget('error');
             return redirect()->back()->with('status', 'Employee Inactivated successfully.');
         }
-        Session::put('error', 'Unable to Inactivate this employee');
+        Session::put('error', 'Employee already Inactivated.');
         Session::forget('success');
         return redirect()->back()->with('errors', 'Employee already Inactivated.');
     }
@@ -373,9 +369,10 @@ class EmployeeController extends Controller
      * @created 21/6/2023
      * @return \Illuminate\Http\Response
      */
-    public function logout()
+    public function logout(Request $request)
     {
-        session()->flush();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
         return redirect()->route('login');
     }
 }

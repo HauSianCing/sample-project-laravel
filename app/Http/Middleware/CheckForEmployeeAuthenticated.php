@@ -4,9 +4,6 @@ namespace App\Http\Middleware;
 
 use Closure;
 use App\Models\Employee;
-use Illuminate\Support\Facades\App;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Session;
 
 /**
  * Class CheckForEmployeeAuthenticated
@@ -26,12 +23,14 @@ class CheckForEmployeeAuthenticated
      */
     public function handle($request, Closure $next)
     {
-        // Get the employee ID and password from the request
-        $employee = session('employee');
+        $sessionEmployee = session('employee');
 
-        if ($employee) {
+        // Make sure the logged-in employee still exists and has not been inactivated.
+        if ($sessionEmployee && isset($sessionEmployee->id) && Employee::whereKey($sessionEmployee->id)->exists()) {
             return $next($request);
         }
+
+        $request->session()->forget('employee');
         return redirect()->route('login');
     }
 }

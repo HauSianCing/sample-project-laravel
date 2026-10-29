@@ -34,8 +34,8 @@ class EmployeeUpdateRequest extends FormRequest
     {
         $employeeId = $this->route('id');
         return [
-            'employee_code' => 'required||max:25',
-            'employee_name' => 'required||max:50',
+            'employee_code' => 'required|max:25',
+            'employee_name' => 'required|max:50',
             'nrc_number' => 'required|regex:/^[a-zA-Z0-9\/\(\)]+$/',
             'email_address' => ['required',
                 'email',

@@ -2,205 +2,122 @@
 
 namespace App\Repositories;
 
-
 use App\Models\Employee;
-use Illuminate\Support\Facades\DB;
 use App\Interfaces\EmployeeInterface;
-use Mpdf\Tag\Em;
 
 /**
  * Class EmployeeRepository
- * Handles employee data functionality.
+ * Data access for employees (search, lookup, new ID).
  *
  * @author Hau Sian Cing
- * @created 22/6/2023
+ * @created 03/07/2023
  */
 class EmployeeRepository implements EmployeeInterface
 {
+    /** Number of employees shown per page on the list screen. */
+    const PER_PAGE = 20;
+
     /**
-     * Getting all information for all employees from employees table 
-     *
-     * @author Hau Sian Cing
-     * @create 22/06/2023
-     * @return object
-     *
+     * Get all employees (active and inactive), paginated
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
      */
     public function getAllEmployees()
     {
-        $employees = Employee::withTrashed()->paginate(20);
-
-        return $employees;
+        return Employee::withTrashed()->paginate(self::PER_PAGE);
     }
 
     /**
-     * Getting all information for specific employee from employees table 
-     *
-     * @author Hau Sian Cing
-     * @create 22/06/2023
+     * Find one employee by primary key, including inactive ones
      * @param $id
-     * @return object
-     *
+     * @return \App\Models\Employee|null
      */
     public function getEmployeeByID($id)
     {
-
-        return $employee = Employee::withTrashed()->find($id);
+        return Employee::withTrashed()->find($id);
     }
 
     /**
-     * Getting new ID  for new employee from employees table 
-     *
-     * @author Hau Sian Cing
-     * @create 22/06/2023
-     * @return integer
-     *
+     * Next employee ID (starts at 10001)
+     * @return int
      */
     public function getNewEmployeeID()
     {
-
-        $maxEmployee = DB::table('employees')->max('employee_id');
-        if ($maxEmployee) {
-            $addID = $maxEmployee + 1;
-            return $addID;
-        } else {
-            $addID = 10001;
-            return $addID;
-        }
+        $maxEmployee = Employee::withTrashed()->max('employee_id');
+        return $maxEmployee ? $maxEmployee + 1 : 10001;
     }
 
     /**
-     * Searching by the input data for employee 
-     *
-     * @author Hau Sian Cing
-     * @create 03/07/2023
-     * @param $request
-     * @return object
-     *
+     * All search results (no pagination) for the Excel / PDF downloads
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Support\Collection
      */
     public function getSearchResultForDownload($request = null)
     {
-        $searchID = $request->employeeID;
-        $searchCode = $request->employeeCode;
-        $searchName = $request->employeeName;
-        $searchEmail = $request->employeeEmail;
-        $employees = Employee::query();
-
-        $query = $employees->withTrashed();
-        $employees = $query
-
-            ->when(!empty($searchID), function ($query) use ($searchID) {
-
-                $query->where('employee_id',  'LIKE', '%' . $searchID . '%');
-            })
-
-            ->when(!empty($searchName), function ($query) use ($searchName) {
-
-                $query->where('employee_name', 'LIKE', '%' . $searchName . '%');
-            })
-
-            ->when(!empty($searchCode), function ($query) use ($searchCode) {
-
-                $query->where('employee_code', 'LIKE', '%' . $searchCode . '%');
-            })
-            ->when(!empty($searchEmail), function ($query) use ($searchEmail) {
-
-                $query->where('email_address', 'LIKE', '%' . $searchEmail . '%');
-            });
-            $employees = $employees->get();
-        return $employees;
+        return $this->searchQuery($request)->get();
     }
+
     /**
-     * Searching by the input data for employee 
-     *
-     * @author Hau Sian Cing
-     * @create 03/07/2023
-     * @param $request
-     * @return object
-     *
+     * Paginated search results for the list screen
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
      */
     public function getSearchResult($request = null)
     {
-        $searchID = $request->employeeID;
-        $searchCode = $request->employeeCode;
-        $searchName = $request->employeeName;
-        $searchEmail = $request->employeeEmail;
-        $employees = Employee::query();
-
-        $query = $employees->withTrashed();
-        $employees = $query
-
-            ->when(!empty($searchID), function ($query) use ($searchID) {
-
-                $query->where('employee_id',  'LIKE', '%' . $searchID . '%');
-            })
-
-            ->when(!empty($searchName), function ($query) use ($searchName) {
-
-                $query->where('employee_name', 'LIKE', '%' . $searchName . '%');
-            })
-
-            ->when(!empty($searchCode), function ($query) use ($searchCode) {
-
-                $query->where('employee_code', 'LIKE', '%' . $searchCode . '%');
-            })
-            ->when(!empty($searchEmail), function ($query) use ($searchEmail) {
-
-                $query->where('email_address', 'LIKE', '%' . $searchEmail . '%');
-            });
-        $employees = $employees->paginate(20)->appends([
-            'employeeID' => $searchID,
-            'employeeCode' => $searchCode,
-            'employeeName' => $searchName,
-            'employeeEmail' => $searchEmail
-        ]);
-        return $employees;
+        return $this->searchQuery($request)
+            ->paginate(self::PER_PAGE)
+            ->appends($this->searchParams($request));
     }
 
     /**
-     * Searching by the input data for employee 
-     *
-     * @author Hau Sian Cing
-     * @create 03/07/2023
-     * @param $request, $page
-     * @return object
-     *
+     * Paginated search results for a specific page
+     * @param \Illuminate\Http\Request $request
+     * @param int $page
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
      */
     public function getSearchPage($request = null, $page = null)
     {
-        $searchID = $request->employeeID;
-        $searchCode = $request->employeeCode;
-        $searchName = $request->employeeName;
-        $searchEmail = $request->employeeEmail;
-        $employees = Employee::query();
+        return $this->searchQuery($request)
+            ->paginate(self::PER_PAGE, ['*'], 'page', $page)
+            ->appends($this->searchParams($request));
+    }
 
-        $query = $employees->withTrashed();
-        $employees = $query
+    /**
+     * Search filters taken from the request
+     * @param \Illuminate\Http\Request|null $request
+     * @return array
+     */
+    private function searchParams($request)
+    {
+        return [
+            'employeeID' => $request ? $request->employeeID : null,
+            'employeeCode' => $request ? $request->employeeCode : null,
+            'employeeName' => $request ? $request->employeeName : null,
+            'employeeEmail' => $request ? $request->employeeEmail : null,
+        ];
+    }
 
-            ->when(!empty($searchID), function ($query) use ($searchID) {
+    /**
+     * Build the shared search query (active and inactive employees)
+     * @param \Illuminate\Http\Request|null $request
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    private function searchQuery($request)
+    {
+        $params = $this->searchParams($request);
+        $columns = [
+            'employeeID' => 'employee_id',
+            'employeeCode' => 'employee_code',
+            'employeeName' => 'employee_name',
+            'employeeEmail' => 'email_address',
+        ];
 
-                $query->where('employee_id',  'LIKE', '%' . $searchID . '%');
-            })
-
-            ->when(!empty($searchName), function ($query) use ($searchName) {
-
-                $query->where('employee_name', 'LIKE', '%' . $searchName . '%');
-            })
-
-            ->when(!empty($searchCode), function ($query) use ($searchCode) {
-
-                $query->where('employee_code', 'LIKE', '%' . $searchCode . '%');
-            })
-            ->when(!empty($searchEmail), function ($query) use ($searchEmail) {
-
-                $query->where('email_address', 'LIKE', '%' . $searchEmail . '%');
+        $query = Employee::withTrashed();
+        foreach ($columns as $param => $column) {
+            $value = $params[$param];
+            $query->when(!empty($value), function ($query) use ($column, $value) {
+                $query->where($column, 'LIKE', '%' . $value . '%');
             });
-
-        $employees = $employees->paginate(20, ['*'], 'page', $page)->appends([
-            'employeeID' => $searchID,
-            'employeeCode' => $searchCode,
-            'employeeName' => $searchName,
-            'employeeEmail' => $searchEmail
-        ]);
-        return $employees;
+        }
+        return $query;
     }
 }

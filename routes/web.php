@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/login', 'EmployeeController@login')->name('login');
-Route::get('/logout', 'EmployeeController@logout')->name('logout');
+Route::post('/logout', 'EmployeeController@logout')->name('logout');
 Route::post('/employees/check', 'EmployeeController@checkEmp')->name('employees.check');
 Route::post('/language', 'LanguageChangeController@switchLanguage')->name('language.switch');
 
@@ -43,4 +43,4 @@ Route::middleware(['lang', 'empCheck'])->group(function () {
     Route::post('/employees/import-excels', 'EmployeeExcelFormController@importExcel')->name('employees.import-excels');
 });
 
-Route::get('/', 'EmployeeController@login')->name('login');
+Route::get('/', 'EmployeeController@login');
