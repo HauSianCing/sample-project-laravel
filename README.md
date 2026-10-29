@@ -1,78 +1,115 @@
-<p align="center"><img src="https://res.cloudinary.com/dtfbvvkyp/image/upload/v1566331377/laravel-logolockup-cmyk-red.svg" width="400"></p>
+# Employee Registration System
 
-<p align="center">
-<a href="https://travis-ci.org/laravel/framework"><img src="https://travis-ci.org/laravel/framework.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://poser.pugx.org/laravel/framework/d/total.svg" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://poser.pugx.org/laravel/framework/v/stable.svg" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://poser.pugx.org/laravel/framework/license.svg" alt="License"></a>
-</p>
+A sample employee management web app built with **Laravel 13** (PHP 8.3+).
+Employees log in with their employee ID, then register, search, edit, inactivate and
+delete other employees, import employees in bulk from Excel, and export search results
+to Excel or PDF. The interface is available in **English** and **Myanmar**.
 
-## About Laravel
+## Features
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **Login / logout** with employee ID and password (session based, password hashed with bcrypt)
+- **Employee list** with search by ID, code, name and email, and pagination (20 per page)
+- **Register** an employee with an optional photo (JPG/PNG, up to 10 MB); employee IDs are generated automatically starting from `10001`
+- **Bulk register from Excel**: download the `employee_registration_form.xlsx` template, fill it in and upload it (up to 100 rows). Every row is validated first; nothing is saved unless all rows are valid
+- **Detail and edit** screens, including replacing the photo
+- **Inactivate / activate** employees (soft delete) and **delete** them permanently; you can't inactivate or delete your own account while logged in, and inactivated employees are logged out
+- **Download search results** as Excel (`.xlsx`) or PDF
+- **Language switch** between English (`en`) and Myanmar (`mm`)
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Tech stack
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+| Part | Used |
+| --- | --- |
+| Framework | Laravel 13, PHP 8.3+ |
+| Database | MySQL (SQLite works too, and is used for tests) |
+| Excel | [maatwebsite/excel](https://docs.laravel-excel.com) 3.1 (PhpSpreadsheet) |
+| PDF | [mPDF](https://mpdf.github.io) 8 |
+| Frontend | Blade, Bootstrap 5 and jQuery (from CDN, no build step) |
 
-## Learning Laravel
+## Getting started
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+Requirements: PHP 8.3+ with the `gd`, `mbstring`, `zip`, `pdo_mysql` (or `pdo_sqlite`) extensions, Composer 2, and MySQL.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 1500 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+```bash
+git clone https://github.com/HauSianCing/sample-project-laravel.git
+cd sample-project-laravel
 
-## Laravel Sponsors
+composer install
+cp .env.example .env
+php artisan key:generate
+```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
+Create a database (default name `employee_system`) and set `DB_*` in `.env`, then:
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[British Software Development](https://www.britishsoftware.co)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- [UserInsights](https://userinsights.com)
-- [Fragrantica](https://www.fragrantica.com)
-- [SOFTonSOFA](https://softonsofa.com/)
-- [User10](https://user10.com)
-- [Soumettre.fr](https://soumettre.fr/)
-- [CodeBrisk](https://codebrisk.com)
-- [1Forge](https://1forge.com)
-- [TECPRESSO](https://tecpresso.co.jp/)
-- [Runtime Converter](http://runtimeconverter.com/)
-- [WebL'Agence](https://weblagence.com/)
-- [Invoice Ninja](https://www.invoiceninja.com)
-- [iMi digital](https://www.imi-digital.de/)
-- [Earthlink](https://www.earthlink.ro/)
-- [Steadfast Collective](https://steadfastcollective.com/)
-- [We Are The Robots Inc.](https://watr.mx/)
-- [Understand.io](https://www.understand.io/)
-- [Abdel Elrafa](https://abdelelrafa.com)
-- [Hyper Host](https://hyper.host)
-- [Appoly](https://www.appoly.co.uk)
-- [OP.GG](https://op.gg)
+```bash
+php artisan migrate --seed
+php artisan serve
+```
 
-## Contributing
+Open http://localhost:8000 and log in with the seeded account:
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+| Employee ID | Password |
+| --- | --- |
+| `10001` | `11111111` |
 
-## Code of Conduct
+> Change or remove this account before using the app anywhere public.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Uploaded photos are stored in `public/photo/`, so the web server needs write access to that folder.
 
-## Security Vulnerabilities
+### Using SQLite instead of MySQL
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+touch database/database.sqlite
+```
+
+and in `.env` set `DB_CONNECTION=sqlite` and remove the other `DB_*` lines.
+
+## Running the tests
+
+```bash
+php artisan test
+```
+
+The tests use an in-memory SQLite database and cover login/logout, search, registration
+(with and without a photo), editing, inactivate/activate, delete, Excel import, and the
+Excel/PDF downloads.
+
+## Project structure
+
+```
+app/
+├── Classes/DBTransaction.php        # base class: runs process() inside a DB transaction
+├── DBTransactions/                  # save / update / delete operations for employees and photos
+├── Exports/                         # Excel template and search-result exports
+├── Http/
+│   ├── Controllers/                 # Employee, Excel, PDF and language controllers
+│   ├── Middleware/                  # employee login check (empCheck), language (lang)
+│   └── Requests/                    # form validation
+├── Imports/EmployeeExcelImport.php  # bulk registration from Excel
+├── Interfaces/ + Repositories/      # data access (bound in RepositoryServiceProvider)
+└── Models/                          # Employee, EmployeeUpload
+lang/en, lang/mm                     # UI translations
+resources/views/employees/           # Blade screens
+```
+
+## Main routes
+
+| Method | URL | Purpose |
+| --- | --- | --- |
+| GET | `/login` | Login screen |
+| POST | `/logout` | Log out |
+| GET | `/employees/lists` | List and search employees |
+| GET | `/employees/register` | Register form |
+| GET | `/employees/register/excel-registers` | Excel bulk registration |
+| GET | `/employees/show/{id}` | Employee detail |
+| GET | `/employees/edit/{id}` | Edit form |
+| GET | `/employees/excel-downloads` | Search results as Excel |
+| GET | `/employees/pdf-search-downloads` | Search results as PDF |
+
+## Author
+
+Hau Sian Cing
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+MIT
