@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use \Mpdf\Mpdf as PDF;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\View;
 use App\Interfaces\EmployeeInterface;
 
@@ -41,10 +42,13 @@ class EmployeeSearchPDFController extends Controller
         $employees = $this->employeeInterface->getSearchResultForDownload($request);
         $documentFileName = "search_results_employees.pdf";
 
+        $tempDir = storage_path('framework/cache/mpdf');
+        File::ensureDirectoryExists($tempDir);
+
         $document = new PDF([
             'mode' => 'utf-8',
             'format' => 'A4',
-            'tempDir' => storage_path('app/mpdf'),
+            'tempDir' => $tempDir,
         ]);
 
         $html = View::make('employees.searchPDF')

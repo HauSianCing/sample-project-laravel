@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 /**
@@ -13,7 +14,12 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 class Employee extends Model
 { 
-    use SoftDeletes;
+    use HasFactory, SoftDeletes;
+
+    /**
+     * Never expose the password hash when the model is serialized.
+     */
+    protected $hidden = ['password'];
     protected $guarded = [];
     
 }
